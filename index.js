@@ -11,22 +11,28 @@ var recursive = require('recursive-readdir');
 var Vinyl = require('vinyl');
 var LocalStorage = require('node-localstorage').LocalStorage;
 
-function sync() {
+var requiredOptions = [
+    'destination'
+];
+
+function sync(options) {
+
     var localStorage = new LocalStorage('./scratch');
 
-    var destination = '/Volumes/sander/social_charging_v2';
-    var extensions = [
-        '*'
-    ];
-    var excludePaths = [
-        '.idea'
-    ];
-    var excludeExtensions = [];
+    requiredOptions.forEach(function(o) {
+        if ('undefined' === typeof options[o]) {
+            throw new Error('Option "' + o + '" is required!');
+        }
+    });
+
+    var extensions = options.extensions ? options.extensions : ['*'];
+    var excludePaths = options.excludePaths ? options.excludePaths : [];
+    var excludeExtensions = options.excludeExtensions ? options.excludeExtensions : [];
 
     function handleFile(file, dest, n) {
 
         if ('undefined' === typeof dest) {
-            dest = destination;
+            dest = options.destination;
         }
         if ('undefined' === typeof n) {
             n = true;
@@ -91,7 +97,7 @@ function sync() {
 
     var queue = [];
     var busyInitializing = true;
-    var repo = new HGRepo(destination);
+    var repo = new HGRepo(options.destination);
 
     var savedRevision = localStorage.getItem('last-hg-update');
 
@@ -129,9 +135,9 @@ function sync() {
                         repo.status({'--rev': savedRevision + ':' + revision}, function (err, output) {
                             output.forEach(function (line) {
                                 if (line.body && 'string' === typeof line.body && line.body.trim().length > 1) {
-                                    var path = destination + '/' + line.body.trim(),
+                                    var path = options.destination + '/' + line.body.trim(),
                                         vinyl = new Vinyl({
-                                            cwd: destination,
+                                            cwd: options.destination,
                                             path: path
                                         });
                                     vinyl.event = fs.existsSync(path) ? 'change' : 'unlink';
